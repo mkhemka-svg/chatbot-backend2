@@ -57,15 +57,17 @@ def chat():
 
     result = response.json()
 
-    assistant_text = ""
-    for item in result.get("output", []):
-        if item.get("role") == "assistant":
+    # Responses API provides a convenient aggregated text field:
+    assistant_text = result.get("output_text", "")
+    
+    # Fallback: if output_text is missing, try to extract manually
+    if not assistant_text:
+        for item in result.get("output", []):
             for chunk in item.get("content", []):
-                if "text" in chunk:
-                    assistant_text += chunk["text"]
-
+                if chunk.get("type") == "output_text":
+                    assistant_text += chunk.get("text", "")
+    
     return jsonify({"ok": True, "reply": assistant_text})
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
