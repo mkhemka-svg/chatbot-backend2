@@ -1,6 +1,6 @@
 # AI Chat Backend
 
-This backend powers a chatbot hosted on Render.
+This backend powers a chatbot that is a AI version of me hosted on Render.
 
 Endpoints:
 
