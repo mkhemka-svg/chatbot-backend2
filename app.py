@@ -1,3 +1,5 @@
+# test change
+
 import os
 import requests
 from flask import Flask, request, jsonify
@@ -6,8 +8,8 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 SYSTEM_INSTRUCTIONS = """
 You are Manya Khemka — a Carnegie Mellon University student studying Information Systems with an additional major in Artificial Intelligence.
@@ -24,74 +26,74 @@ Use structured thinking.
 Never invent experiences.
 """.strip()
 
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-
-
-@app.get("/")
-def home():
-    return jsonify({"ok": True, "endpoints": ["/health", "/chat"]})
-
+OPENAI_URL = "https://api.openai.com/v1/responses"
 
 @app.get("/health")
 def health():
     return jsonify({"ok": True})
 
-
 @app.post("/chat")
 def chat():
-    if not GEMINI_API_KEY:
-        return jsonify({"ok": False, "error": "Missing GEMINI_API_KEY"}), 500
+    if not OPENAI_API_KEY:
+        return jsonify({"ok": False, "error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(silent=True) or {}
-    message = (data.get("message") or "").strip()
-    history = data.get("history") or []
+    data = request.get_json()
+    message = data.get("message", "")
+    history = data.get("history", [])
 
-    if not message:
-        return jsonify({"ok": False, "error": "Message is required"}), 400
+    input_items = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+    input_items += history[-12:]
+    input_items.append({"role": "user", "content": message})
 
-    # Convert your history format [{role, content}, ...] into a single text context
-    # (Simple + reliable approach)
-    convo_lines = [f"SYSTEM: {SYSTEM_INSTRUCTIONS}"]
-    for h in history[-12:]:
-        role = h.get("role", "")
-        content = h.get("content", "")
-        if role and content:
-            convo_lines.append(f"{role.upper()}: {content}")
-    convo_lines.append(f"USER: {message}")
-
-    prompt_text = "\n".join(convo_lines)
-
-    resp = requests.post(
-        GEMINI_URL,
-        params={"key": GEMINI_API_KEY},
-        headers={"Content-Type": "application/json"},
-        json={
-            "contents": [
-                {"role": "user", "parts": [{"text": prompt_text}]}
-            ],
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 250
-            }
+    response = requests.post(
+        OPENAI_URL,
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
         },
-        timeout=60
+        json={
+            "model": OPENAI_MODEL,
+            "input": input_items
+        }
     )
 
-    if resp.status_code != 200:
-        return jsonify({"ok": False, "status": resp.status_code, "error": resp.text}), 500
+    result = response.json()
 
-    result = resp.json()
+    # If OpenAI returned an error, surface it clearly
+    if response.status_code != 200:
+        return jsonify({
+            "ok": False,
+            "status": response.status_code,
+            "error": result
+        }), 500
 
-    # Extract text safely
-    reply = ""
-    try:
-        reply = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception:
-        reply = ""
+    assistant_text = result.get("output_text", "")
 
-    return jsonify({"ok": True, "reply": reply})
-    
+    # Robust fallback: search for any text fields
+    if not assistant_text:
+        try:
+            for item in result.get("output", []):
+                for chunk in item.get("content", []):
+                    # Handles multiple possible shapes
+                    if isinstance(chunk, dict):
+                        if "text" in chunk and isinstance(chunk["text"], str):
+                            assistant_text += chunk["text"]
+                        if chunk.get("type") == "output_text" and isinstance(chunk.get("text"), str):
+                            assistant_text += chunk.get("text", "")
+        except Exception:
+            pass
+
+    # TEMP DEBUG: if still empty, return raw result so we can see structure
+    if not assistant_text:
+        return jsonify({"ok": False, "debug_raw_openai_response": result}), 200
+
+    return jsonify({"ok": True, "reply": assistant_text})
+
+@app.get("/")
+def home():
+    return jsonify({"ok": True, "endpoints": ["/health", "/chat"]})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
