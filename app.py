@@ -26,7 +26,7 @@ Use structured thinking.
 Never invent experiences.
 """.strip()
 
-OPENAI_URL = "https://api.openai.com/v1/responses"
+OPENAI_URL = "https://chatbot-backend2-p7vp.onrender.com"
 
 @app.get("/health")
 def health():
@@ -76,6 +76,7 @@ def chat():
                 for chunk in item.get("content", []):
                     # Handles multiple possible shapes
                     if isinstance(chunk, dict):
+            
                         if "text" in chunk and isinstance(chunk["text"], str):
                             assistant_text += chunk["text"]
                         if chunk.get("type") == "output_text" and isinstance(chunk.get("text"), str):
