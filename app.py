@@ -1,3 +1,5 @@
+# test change
+
 import os
 import requests
 from flask import Flask, request, jsonify
@@ -57,15 +59,33 @@ def chat():
 
     result = response.json()
 
-    # Responses API provides a convenient aggregated text field:
+    # If OpenAI returned an error, surface it clearly
+    if response.status_code != 200:
+        return jsonify({
+            "ok": False,
+            "status": response.status_code,
+            "error": result
+        }), 500
+
     assistant_text = result.get("output_text", "")
 
-    # Fallback: if output_text is missing, try to extract manually
+    # Robust fallback: search for any text fields
     if not assistant_text:
-        for item in result.get("output", []):
-            for chunk in item.get("content", []):
-                if chunk.get("type") == "output_text":
-                    assistant_text += chunk.get("text", "")
+        try:
+            for item in result.get("output", []):
+                for chunk in item.get("content", []):
+                    # Handles multiple possible shapes
+                    if isinstance(chunk, dict):
+                        if "text" in chunk and isinstance(chunk["text"], str):
+                            assistant_text += chunk["text"]
+                        if chunk.get("type") == "output_text" and isinstance(chunk.get("text"), str):
+                            assistant_text += chunk.get("text", "")
+        except Exception:
+            pass
+
+    # TEMP DEBUG: if still empty, return raw result so we can see structure
+    if not assistant_text:
+        return jsonify({"ok": False, "debug_raw_openai_response": result}), 200
 
     return jsonify({"ok": True, "reply": assistant_text})
 
