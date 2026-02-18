@@ -1,0 +1,96 @@
+PROMPT HISTORY — Manya Character Chatbot Backend
+
+Project Goal:
+Build a backend AI-powered chatbot that acts as a character version of Manya Khemka and integrate it with a frontend hosted on GitHub Pages. The backend securely calls an AI API and returns structured JSON responses.
+
+AI Tools Used:
+- ChatGPT (GPT-4-level reasoning) for backend architecture and debugging
+- OpenAI API (Responses API and Chat Completions API experimentation)
+- Render deployment documentation
+- curl for endpoint testing
+
+------------------------------------------------------------
+KEY PROMPTS THAT SHAPED IMPLEMENTATION
+------------------------------------------------------------
+
+1. “Build a Flask backend with a /chat endpoint that securely calls OpenAI API using environment variables.”
+
+2. “Design a system prompt that turns the chatbot into a character version of Manya using resume information.”
+
+3. “Fix empty reply issue when using OpenAI Responses API.”
+
+4. “Surface raw OpenAI errors in Flask responses for debugging.”
+
+5. “Enable CORS so GitHub Pages frontend can call Render backend.”
+
+6. “Deploy Flask backend using gunicorn on Render.”
+
+------------------------------------------------------------
+DEBUGGING PROCESS & API KEY ISSUES
+------------------------------------------------------------
+
+Several issues occurred during integration with OpenAI API:
+
+1. invalid_api_key (401 error)
+   - Cause: Placeholder or incorrectly copied API key in Render environment variables.
+   - Resolution: Deleted existing OPENAI_API_KEY variable in Render and re-added a freshly generated key.
+
+2. insufficient_quota (429 error)
+   - Cause: OpenAI API requires billing-enabled account for usage.
+   - Insight: OpenAI ChatGPT free plan does NOT include free API usage.
+   - Resolution explored: Considered switching to Gemini API as a free alternative.
+
+3. Empty reply from API
+   - Cause: Responses API output structure differed from expected parsing.
+   - Resolution: Added debug fallback logic to return raw OpenAI response JSON for inspection.
+   - Improved response extraction logic for nested output fields.
+
+These debugging steps improved understanding of:
+- Environment variable management
+- Secure API handling
+- Error surfacing best practices
+- Differences between ChatGPT web app and OpenAI API
+
+------------------------------------------------------------
+SYSTEM PROMPT DESIGN
+------------------------------------------------------------
+
+The chatbot was configured with structured instructions including:
+
+- CMU Information Systems + AI background
+- Founder of Learnclusive (460+ students served)
+- Founder of Skill Upliftment Initiative (120 women trained; 35% income growth)
+- Built personalization pipelines at Handpickd
+- Collester Fellow (systems thinking, stakeholder analysis)
+- Tone: analytical but warm
+- Responses under 150 words unless depth requested
+- No invented experiences
+
+------------------------------------------------------------
+ARCHITECTURE DECISIONS
+------------------------------------------------------------
+
+- Flask backend for simplicity
+- gunicorn for production deployment
+- Render hosting
+- Environment variables for secret management
+- Frontend communicates via POST /chat
+- Backend returns structured JSON: { ok: true, reply: text }
+
+------------------------------------------------------------
+SECURITY PRACTICES
+------------------------------------------------------------
+
+- API keys never committed to GitHub
+- All secrets stored as Render environment variables
+- Frontend never directly calls OpenAI
+- Backend handles third-party API communication
+- Error handling added to prevent silent failures
+
+------------------------------------------------------------
+FINAL DEPLOYMENT
+------------------------------------------------------------
+
+Backend deployed on Render.
+Frontend deployed on GitHub Pages.
+End-to-end communication tested using curl and browser console.
